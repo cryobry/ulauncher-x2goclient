@@ -1,25 +1,25 @@
 {
   "required_api_version": "^2.0.0",
-  "name": "Remmina",
-  "description": "Quick access to Remmina profiles",
-  "developer_name": "noam09",
+  "name": "x2goclient",
+  "description": "Quick access to x2goclient sessions",
+  "developer_name": "cryobry",
   "icon": "images/icon.svg",
   "options": {
     "query_debounce": 0.1
   },
   "preferences": [
     {
-      "id": "remmina",
+      "id": "x2goclient",
       "type": "keyword",
-      "name": "Remmina",
-      "description": "Quick access to Remmina profiles",
-      "default_value": "r"
+      "name": "x2goclient",
+      "description": "Quick access to x2goclient sessions",
+      "default_value": "x"
     },
     {
-      "id": "profiles",
+      "id": "sessions",
       "type": "input",
-      "name": "Remmina Profiles Directory",
-      "description": "Where Remmina stores profile configuration files <br /><code>~/.local/share/remmina</code> and <code>~/.remmina</code> are checked by default",
+      "name": "x2goclient sessions file",
+      "description": "Where x2goclient stores its profile configuration file <br /><code>~/.x2goclient/sessions</code> is checked by default",
       "default_value": ""
     }
   ]

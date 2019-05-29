@@ -27,77 +27,69 @@ if os.path.exists(usage_db):
         # JSON to dict
         usage_cache = json.loads(raw)
 
-# Initialize items cache and Remmina profiles path
-remmina_bin = ""
-# Locate Remmina profiles and binary
-default_paths = ["{}/.local/share/remmina".format(os.environ.get('HOME')),
-                 "{}/.remmina".format(os.environ.get('HOME'))]
-# remmina_profiles_path = "{}/.local/share/remmina".format(os.environ.get('HOME'))
-# remmina_profiles_path_alt = "{}/.remmina".format(os.environ.get('HOME'))
-remmina_bin = distutils.spawn.find_executable('remmina')
-# This extension is useless without remmina
-if remmina_bin is None or remmina_bin == "":
-    logger.error("Remmina executable path could not be determined")
+# Initialize items cache and x2goclient sessions file path
+x2goclient_bin = ""
+# Locate x2goclient profiles and binary
+x2go_sessions_path = ["{}/.x2goclient/sessions".format(os.environ.get('HOME'))]
+x2goclient_bin = distutils.spawn.find_executable('x2goclient')
+# This extension is useless without x2goclient
+if x2goclient_bin is None or x2goclient_bin == "":
+    logger.error("x2goclient executable path could not be determined")
     exit()
-# Check if Remmina profiles directory exists
-remmina_profiles_path = None
+# Check if x2goclient sessions file exists
+x2go_sessions_path_exists = None
 # Check default paths first
-for p in default_paths:
-    if os.path.isdir(p):
-        remmina_profiles_path = p
+if os.path.isfile(x2go_sessions_path):
+    x2go_sessions_path_exists = True
 
 
-class RemminaExtension(Extension):
+class x2goclientExtension(Extension):
     def __init__(self):
 
-        super(RemminaExtension, self).__init__()
+        super(x2goclientExtension, self).__init__()
         self.subscribe(KeywordQueryEvent, KeywordQueryEventListener())
         self.subscribe(ItemEnterEvent, ItemEnterEventListener())
 
-    def list_profiles(self, query):
-        profiles = []
-        items_cache = []
-        try:
-            # Get list of profile files from Remmina directory
-            for profile in os.listdir(remmina_profiles_path):
-                if profile.endswith(".remmina"):
-                    profiles.append(os.path.join(remmina_profiles_path, profile))
-            # Get sorted list of profiles
-            temp = profiles
-            profiles = sorted(temp)
-        except Exception as e:
-            logger.error("Failed getting Remmina profile files")
-        for p in profiles:
-            base = os.path.basename(p)
-            title, desc, proto = profile_details(p)
+    def list_sessions(self, query):
+        items = []
+        with open('/home/bryan/.x2goclient/sessions') as lines:
+            for line in lines:
+                if line.startswith('host=') or line.startswith('name='):
+                    line = line.rstrip()
+                    line = line.split('=',1)
+                    item = line[1]
+                    items.append(item)
+        it_items = iter(items)
+        sessions = list(zip(it_items, it_items))
+        for session in sessions:
+            host = session[0]
+            name = session[1]
             # Search for query inside filename and profile description
             # Multiple strings can be used to search in description
             # all() is used to achieve a AND search (include all keywords)
             keywords = query.split(" ")
             # if (query in base.lower()) or (query in desc.lower()):
-            if (query.lower() in base.lower()) or \
-               (query.lower() in title.lower()) or \
-               all(x.lower() in desc.lower() for x in keywords):
-                items_cache.append(create_item(title, proto, p, desc, p))
+            if (query.lower() in host.lower()) or (query.lower() in name.lower()):
+                items_cache.append(create_item(host, name))
 
         items_cache = sorted(items_cache, key=sort_by_usage, reverse=True)
         return items_cache
 
 
+
 class KeywordQueryEventListener(EventListener):
     def on_event(self, event, extension):
-        global remmina_profiles_path
-        if extension.preferences["profiles"] is not "" \
-           or not remmina_profiles_path:
+        global x2go_sessions_path
+        if extension.preferences["sessions"] is not "" or not x2go_sessions_path:
             # Tilde (~) won't work alone, need expanduser()
-            remmina_profiles_path = os.path.expanduser(extension.preferences["profiles"])
-        # pref_profiles_path = extension.preferences['profiles']
-        logger.debug("Remmina profiles path: {}".format(remmina_profiles_path))
+            x2go_sessions_path = os.path.expanduser(extension.preferences["sessions"])
+        # pref_sessions_path = extension.preferences['sessions']
+        logger.debug("x2goclient sessions path: {}".format(x2go_sessions_path))
         # Get query
         term = (event.get_argument() or "").lower()
         # Display all items when query empty
-        profiles_list = extension.list_profiles(term)
-        return RenderResultListAction(profiles_list[:8])
+        sessions_list = extension.list_sessions(term)
+        return RenderResultListAction(sessions_list[:8])
 
 
 class ItemEnterEventListener(EventListener):
@@ -117,16 +109,16 @@ class ItemEnterEventListener(EventListener):
         # Update usage JSON
         with open(usage_db, 'w') as db:
             db.write(json.dumps(usage_cache, indent=2))
-        return RunScriptAction('#!/usr/bin/env bash\n{} -c {}\n'.format(remmina_bin, on_enter), None).run()
+        return RunScriptAction('#!/usr/bin/env bash\n{} --session {}\n'.format(x2goclient_bin, on_enter), None).run()
 
 
-def create_item(name, icon, keyword, description, on_enter):
+def create_item(host, name):
     return ExtensionResultItem(
             name=name,
-            description=description,
-            icon="images/{}.svg".format(icon),
+            description=host,
+            icon="images/x2goclient.svg",
             on_enter=ExtensionCustomAction(
-                 {"id": on_enter})
+                 {"id": name})
             )
 
 
@@ -141,61 +133,6 @@ def sort_by_usage(i):
     return 0
 
 
-def profile_details(profile_path):
-    if os.path.isfile(profile_path):
-        with open(profile_path, "r") as f:
-            # Read profile file lines
-            lines = f.read().split("\n")
-            # Initialize strings
-            desc = name = username = group = proto = ""
-            # Parse lines for relevant details
-            for line in lines:
-                # Profile name
-                if line.startswith("name="):
-                    elem = line.split("name=")
-                    if len(elem[1]) > 0:
-                        name = elem[1]
-                # Profile username (optional)
-                if "username=" in line:
-                    elem = line.split("username=")
-                    # if len(elem) > 1:
-                    if len(elem[0]) == 0 and len(elem[1]) > 0:
-                        username = elem[1]
-                    elif len(elem[0]) > 0 and len(elem[1]) > 0:
-                        username = elem[1]
-                # Profile server and port
-                if line.startswith("server="):
-                    elem = line.split("server=")
-                    if len(elem[1]) > 0:
-                        server = elem[1]
-                # Profile group name
-                if line.startswith("group="):
-                    elem = line.split("group=")
-                    if len(elem[1]) > 0:
-                        group = elem[1]
-                # Profile protocol (for different icons)
-                if line.startswith("protocol="):
-                    elem = line.split("protocol=")
-                    if len(elem[1]) > 0:
-                        proto = elem[1].strip().lower()
-                else:
-                    pass
-            if len(username) > 0:
-                server = "{username}@{server}".format(username=username,
-                                                      server=server)
-            if len(proto) > 0:
-                server = "{proto}://{server}".format(proto=proto,
-                                                     server=server)
-            if len(group) > 0:
-                group = " | {group}".format(group=group)
-            # Final description string
-            desc = "{server} {group}".format(server=server,
-                                             group=group)
-            return name, desc, proto
-    else:
-        # Default values
-        return "", "", "rdp"
-
 
 if __name__ == "__main__":
-    RemminaExtension().run()
+    x2goclientExtension().run()
