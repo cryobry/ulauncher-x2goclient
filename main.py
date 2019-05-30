@@ -30,7 +30,7 @@ if os.path.exists(usage_db):
 # Initialize items cache and x2goclient sessions file path
 x2goclient_bin = ""
 # Locate x2goclient profiles and binary
-x2go_sessions_path = ["{}/.x2goclient/sessions".format(os.environ.get('HOME'))]
+x2go_sessions_path = "{}/.x2goclient/sessions".format(os.environ.get('HOME'))
 x2goclient_bin = distutils.spawn.find_executable('x2goclient')
 # This extension is useless without x2goclient
 if x2goclient_bin is None or x2goclient_bin == "":
@@ -39,7 +39,7 @@ if x2goclient_bin is None or x2goclient_bin == "":
 # Check if x2goclient sessions file exists
 x2go_sessions_path_exists = None
 # Check default paths first
-if os.path.isfile(x2go_sessions_path):
+if os.path.exists(x2go_sessions_path):
     x2go_sessions_path_exists = True
 
 
@@ -52,26 +52,28 @@ class x2goclientExtension(Extension):
 
     def list_sessions(self, query):
         items = []
+        items_cache = []
         with open('/home/bryan/.x2goclient/sessions') as lines:
             for line in lines:
+                if line.startswith('['):
+                    item = line.rstrip()
+                    items.append(item[1:-1])
                 if line.startswith('host=') or line.startswith('name='):
                     line = line.rstrip()
                     line = line.split('=',1)
                     item = line[1]
                     items.append(item)
         it_items = iter(items)
-        sessions = list(zip(it_items, it_items))
+        sessions = list(zip(it_items, it_items, it_items))
         for session in sessions:
-            host = session[0]
-            name = session[1]
+            seid = session[0]
+            host = session[1]
+            name = session[2]
             # Search for query inside filename and profile description
-            # Multiple strings can be used to search in description
-            # all() is used to achieve a AND search (include all keywords)
             keywords = query.split(" ")
             # if (query in base.lower()) or (query in desc.lower()):
             if (query.lower() in host.lower()) or (query.lower() in name.lower()):
-                items_cache.append(create_item(host, name))
-
+                items_cache.append(create_item(seid, host, name))
         items_cache = sorted(items_cache, key=sort_by_usage, reverse=True)
         return items_cache
 
@@ -109,16 +111,16 @@ class ItemEnterEventListener(EventListener):
         # Update usage JSON
         with open(usage_db, 'w') as db:
             db.write(json.dumps(usage_cache, indent=2))
-        return RunScriptAction('#!/usr/bin/env bash\n{} --session {}\n'.format(x2goclient_bin, on_enter), None).run()
+        return RunScriptAction('#!/usr/bin/env bash\n{} --sessionid={}\n'.format(x2goclient_bin, on_enter), None).run()
 
 
-def create_item(host, name):
+def create_item(seid, host, name):
     return ExtensionResultItem(
             name=name,
             description=host,
             icon="images/x2goclient.svg",
             on_enter=ExtensionCustomAction(
-                 {"id": name})
+                 {"id": seid})
             )
 
 

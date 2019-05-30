@@ -2,8 +2,8 @@
   "required_api_version": "^2.0.0",
   "name": "x2goclient",
   "description": "Quick access to x2goclient sessions",
-  "developer_name": "cryobry",
-  "icon": "images/icon.svg",
+  "developer_name": "Bryan Roessler",
+  "icon": "images/x2goclient.svg",
   "options": {
     "query_debounce": 0.1
   },
@@ -19,7 +19,7 @@
       "id": "sessions",
       "type": "input",
       "name": "x2goclient sessions file",
-      "description": "Where x2goclient stores its profile configuration file <br /><code>~/.x2goclient/sessions</code> is checked by default",
+      "description": "Where x2goclient stores its sessions file <br /><code>~/.x2goclient/sessions</code> is checked by default",
       "default_value": ""
     }
   ]
