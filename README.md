@@ -6,4 +6,4 @@ Icons from the [Numix project](https://github.com/numixproject).
 
 Adapted from [ulauncher-remmina](https://github.com/noam09/ulauncher-remmina) by noam09.
 
-[//]: # ![ulauncher-x2goclient extension screenshot](screenshot.png)
+![ulauncher-x2goclient extension screenshot](screenshot.png)
