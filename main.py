@@ -53,7 +53,7 @@ class x2goclientExtension(Extension):
     def list_sessions(self, query):
         items = []
         items_cache = []
-        with open('/home/bryan/.x2goclient/sessions') as lines:
+        with open(x2go_sessions_path) as lines:
             for line in lines:
                 if line.startswith('['):
                     item = line.rstrip()
